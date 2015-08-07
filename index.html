@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Get Token and Add Resource!</title>
+</head>
+<body>
+<p>
+  You can run web server by comand<br/>
+  ruby -run -e httpd . -p 9090<br/>
+  And then localhost:9090
+</p>
+
+<form>
+  <input name="client_id" id="clientId" value="" placeholder="Input client Id"/>
+  <input name="client_secret" id="clientSecret" value="" placeholder="Input client Secret"/>
+  <input name="username" id="username" value="" placeholder="Input username"/>
+  <input name="password" id="password" value="" placeholder="Input password"/>
+
+  <button id="getToken" type="submit">Get Token and Add Resource!</button>
+</form>
+
+<div>
+  <div id="status"></div>
+  <pre id="content"></pre>
+</div>
+
+<script type="text/javascript">
+
+(function(window, undefined) {
+
+  /**
+  Get token
+  **/
+  function getToken(clientId, clientSecret, username, pass, cb) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'https://api-staging.opened.io/oauth/token', true);
+    xhr.setRequestHeader('Content-type', 'application/json; charset=utf-8');
+
+    xhr.onreadystatechange = function () {
+      if (this.readyState == 4) {
+        if (typeof cb !== "undefined") {
+          cb(this);
+        }
+        else {
+          console.log('Status: '+this.status+'\nHeaders: '+JSON.stringify(this.getAllResponseHeaders())+'\nBody: '+this.responseText);
+        }
+      }
+    };
+
+    xhr.send(JSON.stringify({
+      client_id: clientId,
+      client_secret: clientSecret,
+      username: username,
+      password: pass,
+      grant_type: "password"
+    }));
+  }
+
+  function addResource(accessToken, data, cb) {
+    var xhr = new XMLHttpRequest();
+
+    xhr.open('POST', 'https://api-staging.opened.io/resources/add.json', true);
+    xhr.setRequestHeader('Content-type', 'application/json; charset=utf-8');
+    xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
+
+    xhr.onreadystatechange = function () {
+      if (this.readyState == 4) {
+        if (typeof cb !== "undefined") {
+          cb(this);
+        }
+        else {
+          console.log('Status: '+this.status+'\nHeaders: '+JSON.stringify(this.getAllResponseHeaders())+'\nBody: '+this.responseText);
+        }
+      }
+    };
+    xhr.send(data);
+  }
+
+  var content = document.getElementById('content'),
+      isLoading = false,
+
+    //Resource Data
+    data = JSON.stringify({
+      url: 'http://www.althea-publishers.com/mathphp/lanzacurso.php?v=3&u=vlady&m=2&l=1',
+      title: 'Math',
+      description: 'Esta es la descripción para el contenido.',
+      standard_idents: ['K.CC.1','K.CC.4'],
+      grades_range: 'K-1',
+      contribution_name: 'Althea Publishers',
+      resource_type: 'Game',
+      rating: 5,
+      image: 'http://www.althea-publishers.com/opened/Icon144.png'
+    });
+
+
+  // load token and add resource on button click
+  document.getElementById('getToken').addEventListener('click', function(ev) {
+    ev.preventDefault();
+
+    if (isLoading) {
+      return false;
+    } else {
+      isLoading = true;
+    }
+
+    var status = document.getElementById('status'),
+
+      // Client Data
+      clientId = document.getElementById('clientId').value,
+      clientSecret = document.getElementById('clientSecret').value,
+      username = document.getElementById('username').value,
+      password = document.getElementById('password').value;
+
+    status.innerHTML = 'Getting token ...';
+    content.innerHTML = '';
+
+    // Get Token by clientId, clientSecret, username, password
+    getToken(clientId, clientSecret, username, password, function(_self) {
+      try {
+        var response = JSON.parse(_self.responseText),
+          accessToken = response.access_token
+
+        document.getElementById('status').innerHTML = 'Adding Resource ...';
+        content.innerHTML = 'Get Token result:\n' + JSON.stringify(response, null, 2) + '\n';
+
+        // Add resource by accessToken and data
+        addResource(accessToken, data, function(self) {
+          isLoading = false;
+          try {
+            document.getElementById('status').innerHTML = 'Complete';
+            content.innerHTML += 'Add Resourse result:\n' + JSON.stringify(JSON.parse(self.responseText), null, 2);
+
+          } catch (e) {
+            document.getElementById('status').innerHTML = 'Error on add Resource!';
+            content.innerHTML += JSON.stringify(e, null, 2);
+          };
+        });
+      } catch(e) {
+        isLoading = false;
+        document.getElementById('status').innerHTML = 'Error on get Token!';
+        content.innerHTML += JSON.stringify(e, null, 2);
+      };
+    });
+  });
+
+})(window);
+
+</script>
+</body>
+</html>
